@@ -1,0 +1,6 @@
+2026-05-19 13:48:25,764|INFO|my_logger.py|40|日志模块初始化完成
+2026-05-19 13:48:25,925|INFO|read_yaml.py|32|读取测试数据，数据文件为：F:\测试\项目\AI健康管理系统\tests\caseData\核心流程数据/core_flow_data.yaml
+2026-05-19 13:48:25,994|INFO|read_yaml.py|32|读取测试数据，数据文件为：F:\测试\项目\AI健康管理系统\tests\caseData\用户管理数据/admin_user_data.yaml
+2026-05-19 13:48:26,000|INFO|read_yaml.py|32|读取测试数据，数据文件为：F:\测试\项目\AI健康管理系统\tests\caseData\用户管理数据/admin_user_data.yaml
+2026-05-19 13:48:26,040|INFO|read_yaml.py|32|读取测试数据，数据文件为：F:\测试\项目\AI健康管理系统\tests\caseData\登录注册数据/login_data.yaml
+2026-05-19 13:48:26,046|INFO|read_yaml.py|32|读取测试数据，数据文件为：F:\测试\项目\AI健康管理系统\tests\caseData\登录注册数据/register_data.yaml

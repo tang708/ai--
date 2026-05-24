@@ -1,4 +1,5 @@
 .env
+dify工作流/api.txt
 node_modules/
 dist/
 .idea/

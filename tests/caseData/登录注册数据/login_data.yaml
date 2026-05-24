@@ -1,0 +1,80 @@
+# 登录接口测试数据
+# 测试账号（从 config/settings.py 引用，避免在 data 文件中硬编码密码）
+
+test_login:
+  - id: TC-LOGIN-001
+    name: "管理员账号登录成功"
+    request:
+      path: /user/login
+      method: POST
+      json:
+        username: "${TEST_ADMIN.username}"
+        password: "${TEST_ADMIN.password}"
+    expected:
+      code: 20000
+      has_token: true
+
+  - id: TC-LOGIN-002
+    name: "普通用户账号登录成功"
+    request:
+      path: /user/login
+      method: POST
+      json:
+        username: "${TEST_NORMAL.username}"
+        password: "${TEST_NORMAL.password}"
+    expected:
+      code: 20000
+      has_token: true
+
+  - id: TC-LOGIN-003
+    name: "密码错误登录失败"
+    request:
+      path: /user/login
+      method: POST
+      json:
+        username: "java1234"
+        password: "wrong_pwd"
+    expected:
+      code_not: 20000
+
+  - id: TC-LOGIN-004
+    name: "不存在的用户登录失败"
+    request:
+      path: /user/login
+      method: POST
+      json:
+        username: "nonexist_user_9999"
+        password: "123456"
+    expected:
+      code_not: 20000
+
+  - id: TC-LOGIN-005
+    name: "用户名为空登录失败"
+    request:
+      path: /user/login
+      method: POST
+      json:
+        username: ""
+        password: "123456"
+    expected:
+      code_not: 20000
+
+  - id: TC-LOGIN-006
+    name: "密码为空登录失败"
+    request:
+      path: /user/login
+      method: POST
+      json:
+        username: "java1234"
+        password: ""
+    expected:
+      code_not: 20000
+
+  - id: TC-LOGIN-007
+    name: "请求体为空登录失败"
+    request:
+      path: /user/login
+      method: POST
+      json: {}
+    expected:
+      code_not: 20000

@@ -1,0 +1,91 @@
+# 管理员用户管理接口测试数据
+
+test_admin_query:
+  - id: TC-ADMIN-001
+    name: "管理员获取分页用户列表"
+    request:
+      path: /user/list
+      method: GET
+      params:
+        pageNo: 1
+        pageSize: 10
+    expected:
+      code: 20000
+
+  - id: TC-ADMIN-002
+    name: "按用户名筛选用户列表"
+    request:
+      path: /user/list
+      method: GET
+      params:
+        pageNo: 1
+        pageSize: 10
+        username: "java1234"
+    expected:
+      code: 20000
+
+  - id: TC-ADMIN-003
+    name: "获取全部用户"
+    request:
+      path: /user/all
+      method: GET
+    expected:
+      code: 20000
+
+  - id: TC-ADMIN-004
+    name: "按ID获取用户详情"
+    request:
+      path: /user/1
+      method: GET
+    expected:
+      code: 20000
+
+  - id: TC-ADMIN-005
+    name: "查询不存在的用户ID"
+    request:
+      path: /user/99999
+      method: GET
+    expected:
+      code_not: 20000
+
+test_admin_crud:
+  test_user:
+    username: "pytest_admin_test"
+    password: "test123456"
+    phone: "13900000001"
+    email: "admin_test@test.com"
+
+  add_user:
+    - id: TC-ADMIN-006
+      name: "管理员新增用户成功"
+      expected:
+        code: 20000
+
+    - id: TC-ADMIN-007
+      name: "新增重复用户名失败"
+      expected:
+        code_not: 20000
+
+    - id: TC-ADMIN-008
+      name: "管理员修改用户信息"
+      update_phone: "13911111111"
+      expected:
+        code: 20000
+
+    - id: TC-ADMIN-009
+      name: "管理员删除用户"
+      expected:
+        code: 20000
+
+test_admin_auth:
+  - id: TC-ADMIN-010
+    name: "普通用户也能获取用户列表(无服务端RBAC)"
+    session: normal
+    expected:
+      code: 20000
+
+  - id: TC-ADMIN-011
+    name: "不带Token也能访问(无认证拦截器)"
+    session: none
+    expected:
+      code: 20000

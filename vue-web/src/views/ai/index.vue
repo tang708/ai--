@@ -13,8 +13,21 @@
               <div v-if="message.type === 'ai'" class="message-avatar">
                 <img :src="aiAvatar" alt="AI Avatar" class="avatar" />
               </div>
-              <div :class="['message', message.type === 'user' ? 'user-message' : 'ai-message']">
-                {{ message.content }}
+              <div class="message-bubble-wrapper">
+                <!-- 推理过程折叠面板 -->
+                <div v-if="message.reasoning" class="reasoning-box">
+                  <div class="reasoning-header" @click="toggleReasoning(index)">
+                    <span class="reasoning-icon">{{ message.reasoningOpen ? '▼' : '▶' }}</span>
+                    <span>推理过程</span>
+                  </div>
+                  <div v-show="message.reasoningOpen" class="reasoning-content">
+                    {{ message.reasoning }}
+                  </div>
+                </div>
+                <!-- 正文内容 -->
+                <div v-if="message.content" :class="['message', message.type === 'user' ? 'user-message' : 'ai-message']">
+                  {{ message.content }}
+                </div>
               </div>
               <div v-if="message.type === 'user'" class="message-avatar">
                 <img :src="userAvatar" alt="User Avatar" class="avatar" />
@@ -49,7 +62,10 @@ export default {
       messages: [
         {
           type: 'ai',
-          content: '你好！我是您的AI健康助手，请问有什么可以帮您的吗？（输入“AI健康建议” 会根据用户历史健康数据给出建议！）'
+          content: '你好！我是您的AI健康助手，请问有什么可以帮您的吗？（输入"AI健康建议" 会根据用户历史健康数据给出建议！）',
+          reasoning: '',
+          reasoningOpen: true,
+          _rawBuffer: ''
         }
       ],
       userInput: '',
@@ -61,12 +77,10 @@ export default {
       reconnectAttempts: 0,
       maxReconnectAttempts: 5,
       reconnectInterval: 3000,
-      // 从 localStorage 获取用户信息
       username: localStorage.getItem('username')
     }
   },
   mounted() {
-    // 建立WebSocket连接
     this.setupWebSocket()
   },
   beforeDestroy() {
@@ -75,17 +89,15 @@ export default {
   methods: {
     setupWebSocket() {
       try {
-        // 关闭已有连接
         if (this.socket) {
           this.socket.close()
           this.socket = null
         }
 
-        // 构建WebSocket URL
         const wsUrl = `ws://localhost:8080/ws/chat`
         console.log('正在连接到WebSocket服务器:', wsUrl)
         this.socket = new WebSocket(wsUrl)
-        // 连接超时处理
+
         const connectionTimeout = setTimeout(() => {
           if (!this.isConnected) {
             console.error('WebSocket连接超时')
@@ -94,7 +106,6 @@ export default {
           }
         }, 5000)
 
-        // 连接成功
         this.socket.onopen = (event) => {
           clearTimeout(connectionTimeout)
           console.log('WebSocket连接已建立')
@@ -103,39 +114,60 @@ export default {
           this.$message.success('已连接到AI助手服务')
         }
 
-        // 接收消息
         this.socket.onmessage = (event) => {
           try {
-            let message = event.data
-            if (message.startsWith('data:')) {
-              message = message.substring(5)
-              // 检查结束标记
-              if (message.includes('[DONE]')) {
-                this.loading = false
-                console.log('AI响应完成')
-                return
-              }
-              // 更新最后一条AI消息
-              const lastMessage = this.messages[this.messages.length - 1]
-              if (lastMessage && lastMessage.type === 'ai') {
-                lastMessage.content += message
-                this.scrollToBottom()
-              }
+            let chunk = event.data
+            if (chunk.startsWith('data:')) {
+              chunk = chunk.substring(5)
             }
+            if (chunk.includes('[DONE]')) {
+              this.loading = false
+              return
+            }
+            if (chunk.includes('[ERROR]')) {
+              this.loading = false
+              this.$message.error('AI服务出错，请重试')
+              return
+            }
+            const lastMessage = this.messages[this.messages.length - 1]
+            if (!lastMessage || lastMessage.type !== 'ai') return
+
+            // 追加到原始缓冲区
+            if (!lastMessage._rawBuffer) lastMessage._rawBuffer = ''
+            lastMessage._rawBuffer += chunk
+
+            // 解析 <think> 标签
+            const raw = lastMessage._rawBuffer
+            const thinkStart = raw.indexOf('<think>')
+            const thinkEnd = raw.indexOf('</think>')
+
+            if (thinkStart >= 0) {
+              if (thinkEnd >= 0) {
+                // 完整的 think 块
+                lastMessage.reasoning = raw.substring(thinkStart + 7, thinkEnd).trim()
+                lastMessage.content = raw.substring(thinkEnd + 8).trim()
+              } else {
+                // think 已开始但未结束，显示推理中
+                lastMessage.reasoning = raw.substring(thinkStart + 7).trim()
+                lastMessage.content = ''
+              }
+            } else {
+              // 没有 think 标签，直接当正文
+              lastMessage.content = raw.trim()
+            }
+
+            this.scrollToBottom()
           } catch (error) {
             console.error('处理WebSocket消息时出错:', error)
-            this.$message.error('消息处理出错')
           }
         }
 
-        // 错误处理
         this.socket.onerror = (error) => {
           console.error('WebSocket错误:', error)
           this.isConnected = false
           this.handleReconnect()
         }
 
-        // 连接关闭
         this.socket.onclose = (event) => {
           console.log('WebSocket连接已关闭', event)
           this.isConnected = false
@@ -149,17 +181,19 @@ export default {
         this.handleReconnect()
       }
     },
+    toggleReasoning(index) {
+      this.messages[index].reasoningOpen = !this.messages[index].reasoningOpen
+      this.$nextTick(() => this.scrollToBottom())
+    },
     handleReconnect() {
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         this.$message.error('无法连接到AI助手服务，请稍后再试')
         this.isConnected = false
         return
       }
-
       this.reconnectAttempts++
       const nextAttemptIn = this.reconnectInterval / 1000
       this.$message.warning(`连接失败，${nextAttemptIn}秒后尝试第${this.reconnectAttempts}次重连...`)
-
       setTimeout(() => {
         this.setupWebSocket()
       }, this.reconnectInterval)
@@ -174,42 +208,39 @@ export default {
     async sendMessage() {
       if (!this.userInput.trim()) return
 
-      // 检查连接状态
       if (!this.isConnected) {
         this.$message.warning('正在连接到AI助手服务...')
         this.setupWebSocket()
         return
       }
 
-      // 添加用户消息
       this.messages.push({
         type: 'user',
         content: this.userInput
       })
-      // 准备发送内容
       const userMessage = this.userInput
       this.userInput = ''
 
-      // 添加空的AI消息占位
+      // 占位AI消息
       this.messages.push({
         type: 'ai',
-        content: ''
+        content: '',
+        reasoning: '',
+        reasoningOpen: true,
+        _rawBuffer: ''
       })
 
       this.loading = true
       this.scrollToBottom()
 
       try {
-        // 构建消息对象，包含用户信息
         const message = {
           type: 'message',
           text: userMessage,
           username: this.username
         }
-        // 发送消息
         if (this.socket.readyState === WebSocket.OPEN) {
           this.socket.send(JSON.stringify(message))
-          console.log('消息已发送:', message)
         } else {
           throw new Error('WebSocket连接未就绪')
         }
@@ -217,9 +248,7 @@ export default {
         console.error('发送消息失败:', error)
         this.$message.error('发送失败，请重试')
         this.loading = false
-        // 移除空的AI消息
         this.messages.pop()
-        // 尝试重连
         this.handleReconnect()
       }
     },
@@ -294,12 +323,16 @@ export default {
   object-fit: cover;
 }
 
-.message {
+.message-bubble-wrapper {
   max-width: 70%;
+}
+
+.message {
   padding: 12px 16px;
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .user-message {
@@ -310,6 +343,48 @@ export default {
 .ai-message {
   background-color: #f4f4f5;
   color: #333;
+}
+
+/* 推理过程面板 */
+.reasoning-box {
+  margin-bottom: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fafafa;
+}
+
+.reasoning-header {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reasoning-header:hover {
+  background-color: #f0f0f0;
+}
+
+.reasoning-icon {
+  font-size: 10px;
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.reasoning-content {
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #888;
+  border-top: 1px solid #e8e8e8;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .message-input {
@@ -327,4 +402,3 @@ export default {
   align-self: flex-end;
 }
 </style>
-

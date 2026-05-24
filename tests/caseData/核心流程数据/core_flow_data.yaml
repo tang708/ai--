@@ -1,0 +1,65 @@
+# 核心业务链路测试数据
+
+test_body_info:
+  body_data:
+    name: "Alice"
+    height: 175.0
+    weight: 70.0
+    bloodSugar: 5.6
+    bloodPressure: "120/80"
+    bloodLipid: "4.5"
+    heart_rate: 72
+    vision: 5
+    sleep_duration: 8
+    sleep_quality: "良好"
+    smoking: false
+    drinking: false
+    exercise: false
+    food_types: "均衡饮食"
+    water_consumption: 2000
+
+  flow_steps:
+    - step: "上传身体信息"
+      path: /user/BodyInformation
+      method: POST
+      expected:
+        code: 20000
+
+    - step: "查询身体信息"
+      path: /user/getBodyInfo
+      method: GET
+      expected:
+        code: 20000
+
+    - step: "保存历史快照"
+      path: /user/BodyInformationNotes
+      method: POST
+      expected:
+        code: 20000
+
+    - step: "查询历史记录"
+      path: /user/getUserBodyList
+      method: GET
+      params:
+        pageNo: 1
+        pageSize: 10
+      expected:
+        code: 20000
+
+test_token:
+  - id: TC-TOKEN-001
+    name: "伪造Token返回信息(后端校验不严格)"
+    token: "fake_token_12345"
+    path: /user/info
+    method: GET
+
+  - id: TC-TOKEN-002
+    name: "缺少Token参数返回400"
+    path: /user/info
+    method: GET
+    expected_status: 400
+
+test_data_consistency:
+  username: "pytest_consistency_check"
+  password: "test123"
+  expected_role: "normal"

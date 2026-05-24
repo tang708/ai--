@@ -1,0 +1,34 @@
+# 注册接口测试数据
+
+test_register:
+  - id: TC-REG-001
+    name: "新用户注册成功"
+    params:
+      username: "pytest_register_test"
+      password: "test123456"
+      phone: "13800000001"
+      email: "test@test.com"
+    expected:
+      code: 20000
+
+  - id: TC-REG-002
+    name: "重复用户名注册失败"
+    params:
+      username: "java1234"
+      password: "123456"
+    expected:
+      code_not: 20000
+
+  - id: TC-REG-003
+    name: "缺少用户名字段注册异常"
+    params:
+      password: "123456"
+    expected:
+      code_not: 20000
+
+  - id: TC-REG-004
+    name: "缺少密码字段注册异常"
+    params:
+      username: "no_pass_user"
+    expected:
+      code: 20000  # 后端缺少校验，允许空密码注册
